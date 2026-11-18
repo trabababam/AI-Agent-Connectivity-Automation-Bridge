@@ -1,0 +1,4 @@
+.venv/
+.bridge-token
+__pycache__/
+*.pyc
