@@ -104,6 +104,129 @@ On GNOME, the installer configures autostart for the current user. The server op
 
 The server itself should run as your regular user. Do not launch it with `sudo` or as `root`.
 
+
+## 5. macOS installation (Homebrew + LaunchAgent)
+
+macOS is supported via a separate set of files. Linux (Debian/Ubuntu, GNOME) setup is unchanged.
+
+### Files added for macOS
+
+| File | Purpose |
+|---|---|
+| `install-mac.sh` | Installer: checks/installs Homebrew, creates `.venv`, installs `Flask`, sets up LaunchAgent, removes Gatekeeper quarantine, prints a colored management cheatsheet. |
+| `start-ai-agent-connectivity-automation-bridge-mac.sh` | Launcher: runs `.venv/bin/python ai-agent-connectivity-automation-bridge-mac.py`. |
+| `ai-agent-connectivity-automation-bridge-mac.py` | Same server code as the Linux version (already cross-platform; listens on `127.0.0.1:8765`, no conflict with AirPlay on port `5000`). |
+
+### Requirements (macOS)
+
+- macOS (tested on Apple Silicon and Intel)
+- Homebrew (the installer offers to install it if missing)
+- Python 3 (installed via Homebrew if missing)
+- A regular user account (no `sudo` needed for the bridge itself)
+
+### Installation (macOS)
+
+```bash
+git clone <repo-url> ~/soft/AI-Agent-Connectivity-Automation-Bridge
+cd ~/soft/AI-Agent-Connectivity-Automation-Bridge
+chmod +x install-mac.sh start-ai-agent-connectivity-automation-bridge-mac.sh
+./install-mac.sh
+```
+
+The installer will:
+
+1. Check for Homebrew; if missing — offer to install it (`[y/N]` prompt).
+2. Create `.venv` and install `Flask==3.1.3`.
+3. Create and load `~/Library/LaunchAgents/com.ai-agent-connectivity-automation-bridge.plist`.
+4. Remove Gatekeeper quarantine (`xattr -dr com.apple.quarantine`) from the project folder if needed.
+5. Open Terminal.app with the running server.
+
+### Managing the server on macOS
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.ai-agent-connectivity-automation-bridge.plist
+launchctl load ~/Library/LaunchAgents/com.ai-agent-connectivity-automation-bridge.plist
+tail -f ~/Library/Logs/ai-agent-connectivity-automation-bridge.log
+./start-ai-agent-connectivity-automation-bridge-mac.sh
+curl -s http://127.0.0.1:8765/api/jobs -H "X-Bridge-Token: $(cat .bridge-token)"
+```
+
+### Gatekeeper note
+
+`.sh` and `.py` files downloaded from the internet may carry the `com.apple.quarantine` attribute. `install-mac.sh` removes it automatically. If something is still blocked, run inside the project folder:
+
+```bash
+xattr -dr com.apple.quarantine .
+```
+
+### Ports
+
+macOS Monterey and later reserve port `5000` for the AirPlay Receiver. This bridge uses port `8765`, so there is no conflict. Do not change `port=` to `5000` on macOS.
+
+### Linux (Debian/Ubuntu, GNOME) — unchanged
+
+Linux setup is unchanged: `./install.sh` (uses `apt-get`, `gnome-terminal`, GNOME autostart, main script `ai-agent-connectivity-automation-bridge.py`).
+
+
+
+## 6. Windows installation (10/11; 7 with caveats)
+
+Windows is supported via a separate set of files. Linux and macOS setups are unchanged.
+
+### Files added for Windows
+
+| File | Purpose |
+|---|---|
+| `install-win.bat` | Installer: checks/installs Python via `winget`, creates `.venv`, installs `Flask`, creates a Startup shortcut, starts the server. |
+| `start-ai-agent-connectivity-automation-bridge-win.bat` | Launcher: runs `.venv\Scripts\python.exe ai-agent-connectivity-automation-bridge-win.py`. |
+| `ai-agent-connectivity-automation-bridge-win.py` | Same server code, with a cross-platform `executable` (`None` on Windows -> uses `cmd.exe`; `/bin/bash` on Linux/macOS). Listens on `127.0.0.1:8765`. |
+
+### Requirements (Windows)
+
+- Windows 10 or Windows 11 (Windows 7: see note below)
+- Python 3.9+ (the installer tries to install Python 3.12 via `winget` if missing)
+- A regular user account
+
+### Installation (Windows)
+
+1. Copy or clone this repository to a folder, e.g. `C:\Users\<you>\soft\AI-Agent-Connectivity-Automation-Bridge`.
+2. Double-click `install-win.bat`.
+
+The installer will:
+
+1. Check required files.
+2. Warn if Windows 7 is detected.
+3. Check Python; if missing -- install Python 3.12 via `winget install --id Python.Python.3.12`.
+4. Create `.venv` and install `Flask==3.1.3`.
+5. Set permissions on `.bridge-token` via `icacls` (if it exists).
+6. Create a Startup shortcut: `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\ai-agent-connectivity-automation-bridge.lnk`.
+7. Start the server in a new window.
+
+### Managing the server on Windows
+
+Manual run:
+
+    start-ai-agent-connectivity-automation-bridge-win.bat
+
+Health check:
+
+    curl http://127.0.0.1:8765/api/jobs
+
+Remove autostart shortcut:
+
+    del "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\ai-agent-connectivity-automation-bridge.lnk"
+
+To stop the server -- press `Ctrl+C` in its console window.
+
+### Windows 7 note
+
+Official Python 3.9+ does not support Windows 7. The last working combination is **Python 3.8.16 + Flask 2.3.x**. If you need Windows 7, edit `requirements.txt` to `Flask==2.3.3` and install Python 3.8 manually from python.org. The installer will warn you about this.
+
+### Ports
+
+The bridge uses port `8765` (same as on Linux/macOS). No conflicts with system services.
+
+
 ## Features
 
 - Connects the Firefox extension to a local terminal service.
@@ -252,6 +375,129 @@ ChatGPT Terminal Bridge.
 В GNOME установщик настраивает автозапуск для текущего пользователя. После установки и при последующих входах в GNOME сервер открывается в отдельном окне терминала. Не закрывайте это окно, пока используете расширение. Чтобы остановить сервер, нажмите `Ctrl+C` в этом окне. Для ручного запуска используйте команду из предыдущего раздела. Не запускайте второй экземпляр, если сервер уже работает: порт `8765` может быть занят.
 
 Сам сервер должен работать от имени обычного пользователя. Не запускайте его через `sudo` или от имени `root`.
+
+
+## 5. Установка на macOS (Homebrew + LaunchAgent)
+
+macOS поддерживается через отдельный набор файлов. Установка на Linux (Debian/Ubuntu, GNOME) не изменилась.
+
+### Файлы, добавленные для macOS
+
+| Файл | Назначение |
+|---|---|
+| `install-mac.sh` | Установщик: проверяет/ставит Homebrew, создаёт `.venv`, ставит `Flask`, настраивает LaunchAgent, снимает карантин Gatekeeper, выводит цветную шпаргалку по управлению. |
+| `start-ai-agent-connectivity-automation-bridge-mac.sh` | Запуск: `.venv/bin/python ai-agent-connectivity-automation-bridge-mac.py`. |
+| `ai-agent-connectivity-automation-bridge-mac.py` | Тот же код сервера, что и для Linux (уже кроссплатформенный; слушает `127.0.0.1:8765`, конфликта с AirPlay на порту `5000` нет). |
+
+### Требования (macOS)
+
+- macOS (проверено на Apple Silicon и Intel)
+- Homebrew (установщик предложит установить, если его нет)
+- Python 3 (ставится через Homebrew, если отсутствует)
+- Обычная учётная запись пользователя (`sudo` для самого моста не нужен)
+
+### Установка (macOS)
+
+```bash
+git clone <repo-url> ~/soft/AI-Agent-Connectivity-Automation-Bridge
+cd ~/soft/AI-Agent-Connectivity-Automation-Bridge
+chmod +x install-mac.sh start-ai-agent-connectivity-automation-bridge-mac.sh
+./install-mac.sh
+```
+
+Установщик:
+
+1. Проверит Homebrew; если нет — предложит установить (запрос `[y/N]`).
+2. Создаст `.venv` и поставит `Flask==3.1.3`.
+3. Создаст и загрузит `~/Library/LaunchAgents/com.ai-agent-connectivity-automation-bridge.plist`.
+4. Снимет карантин Gatekeeper (`xattr -dr com.apple.quarantine`) с папки проекта, если нужно.
+5. Откроет Terminal.app с запущенным сервером.
+
+### Управление сервером на macOS
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.ai-agent-connectivity-automation-bridge.plist
+launchctl load ~/Library/LaunchAgents/com.ai-agent-connectivity-automation-bridge.plist
+tail -f ~/Library/Logs/ai-agent-connectivity-automation-bridge.log
+./start-ai-agent-connectivity-automation-bridge-mac.sh
+curl -s http://127.0.0.1:8765/api/jobs -H "X-Bridge-Token: $(cat .bridge-token)"
+```
+
+### Примечание про Gatekeeper
+
+Файлы `.sh` и `.py`, скачанные из интернета, могут быть помечены атрибутом `com.apple.quarantine`. `install-mac.sh` снимает его автоматически. Если что-то всё равно блокируется — выполни в папке проекта:
+
+```bash
+xattr -dr com.apple.quarantine .
+```
+
+### Порты
+
+macOS Monterey и новее занимают порт `5000` под AirPlay Receiver. Этот мост использует порт `8765`, поэтому конфликта нет. Не меняй `port=` на `5000` на macOS.
+
+### Linux (Debian/Ubuntu, GNOME) — без изменений
+
+Установка на Linux не изменилась: `./install.sh` (использует `apt-get`, `gnome-terminal`, автозапуск GNOME, основной скрипт `ai-agent-connectivity-automation-bridge.py`).
+
+
+
+## 6. Установка на Windows (10/11; 7 -- с оговорками)
+
+Windows поддерживается через отдельный набор файлов. Установка на Linux и macOS не изменилась.
+
+### Файлы, добавленные для Windows
+
+| Файл | Назначение |
+|---|---|
+| `install-win.bat` | Установщик: проверяет/ставит Python через `winget`, создаёт `.venv`, ставит `Flask`, создаёт ярлык в автозагрузке, запускает сервер. |
+| `start-ai-agent-connectivity-automation-bridge-win.bat` | Запуск: `.venv\Scripts\python.exe ai-agent-connectivity-automation-bridge-win.py`. |
+| `ai-agent-connectivity-automation-bridge-win.py` | Тот же код сервера, с кроссплатформенным `executable` (`None` на Windows -> используется `cmd.exe`; `/bin/bash` на Linux/macOS). Слушает `127.0.0.1:8765`. |
+
+### Требования (Windows)
+
+- Windows 10 или Windows 11 (Windows 7 -- см. примечание ниже)
+- Python 3.9+ (установщик попытается поставить Python 3.12 через `winget`, если его нет)
+- Обычная учётная запись пользователя
+
+### Установка (Windows)
+
+1. Скопируй или склонируй репозиторий в папку, например `C:\Users\<you>\soft\AI-Agent-Connectivity-Automation-Bridge`.
+2. Дважды кликни по `install-win.bat`.
+
+Установщик:
+
+1. Проверит обязательные файлы.
+2. Предупредит, если обнаружена Windows 7.
+3. Проверит Python; если нет -- поставит Python 3.12 через `winget install --id Python.Python.3.12`.
+4. Создаст `.venv` и поставит `Flask==3.1.3`.
+5. Выставит права на `.bridge-token` через `icacls` (если файл есть).
+6. Создаст ярлык в автозагрузке: `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\ai-agent-connectivity-automation-bridge.lnk`.
+7. Запустит сервер в новом окне.
+
+### Управление сервером на Windows
+
+Ручной запуск:
+
+    start-ai-agent-connectivity-automation-bridge-win.bat
+
+Проверка, что сервер отвечает:
+
+    curl http://127.0.0.1:8765/api/jobs
+
+Удалить ярлык из автозагрузки:
+
+    del "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\ai-agent-connectivity-automation-bridge.lnk"
+
+Чтобы остановить сервер -- нажми `Ctrl+C` в его окне консоли.
+
+### Примечание про Windows 7
+
+Официально Python 3.9+ не поддерживает Windows 7. Последняя рабочая связка -- **Python 3.8.16 + Flask 2.3.x**. Если нужна Windows 7: измени `requirements.txt` на `Flask==2.3.3` и поставь Python 3.8 вручную с python.org. Установщик об этом предупредит.
+
+### Порты
+
+Мост использует порт `8765` (как и на Linux/macOS). Конфликтов с системными службами нет.
+
 
 ## Возможности
 
